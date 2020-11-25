@@ -31,6 +31,11 @@ var payloads = api.Payloads{
 		Endpoint: "/api/v0/settings/ssl_certificate",
 		IsCollectable: true,
 	},
+	"uaa-tokens-expiration": api.Payload{
+		Endpoint: "/api/v0/uaa/tokens_expiration",
+		IsCollectable: true,
+		Root: "tokens_expiration",
+	},
 }
 
 func (StagedOpsManager) Run(cli *CLI) error {
