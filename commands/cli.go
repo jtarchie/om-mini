@@ -12,6 +12,8 @@ import (
 type Credentials struct {
 	Username             string   `env:"OM_USERNAME" short:"u" help:"admin username for the Ops Manager VM (not required for unauthenticated commands)"`
 	Password             string   `env:"OM_PASSWORD" short:"p" help:"admin password for the Ops Manager VM (not required for unauthenticated commands)"`
+	ClientID             string   `env:"OM_CLIENT_ID" help:"admin client ID for the Ops Manager VM (not required for unauthenticated commands)"`
+	ClientSecret         string   `env:"OM_CLIENT_SECRET" help:"admin client secret for the Ops Manager VM (not required for unauthenticated commands)"`
 	Target               *url.URL `env:"OM_TARGET"   short:"t" required help:"location of the Ops Manager VM"`
 	DecryptionPassphrase string   `env:"OM_DECRYPTION_PASSPHRASE" short:"d" help:"Passphrase to decrypt the installation if the Ops Manager VM has been rebooted (optional for most commands)"`
 	SkipSSLValidation    bool     `env:"OM_SKIP_SSL_VALIDATION" short:"k" help:"skip ssl certificate validation during http requests"`
@@ -50,24 +52,46 @@ func (c *CLI) newClient() *resty.Client {
 			return nil
 		}
 
-		if c.Username != "" && c.Password != "" {
-			api, err := uaa.New(
-				c.Target.String()+"/uaa",
-				uaa.WithPasswordCredentials("opsman", "", c.Username, c.Password, uaa.OpaqueToken),
-				uaa.WithSkipSSLValidation(c.SkipSSLValidation),
-				uaa.WithVerbosity(c.Verbose),
-			)
-			if err != nil {
-				return err
-			}
-
-			token, err = api.Token(r.Context())
-			if err != nil {
-				return err
-			}
-
-			r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.AccessToken))
+		options := []uaa.Option{
+			uaa.WithSkipSSLValidation(c.SkipSSLValidation),
 		}
+
+		var authOption uaa.AuthenticationOption
+
+		if c.Username != "" && c.Password != "" {
+			authOption = uaa.WithPasswordCredentials(
+				"opsman",
+				"",
+				c.Username,
+				c.Password,
+				uaa.OpaqueToken,
+			)
+		} else if c.ClientID != "" && c.ClientSecret != "" {
+			authOption = uaa.WithClientCredentials(
+				c.ClientID,
+				c.ClientSecret,
+				uaa.OpaqueToken,
+			)
+		}
+
+		api, err := uaa.New(
+			c.Target.String()+"/uaa",
+			authOption,
+			options...,
+		)
+		if err != nil {
+			return fmt.Errorf("could not init UAA client: %w", err)
+		}
+
+		token, err = api.Token(r.Context())
+		if err != nil {
+			return fmt.Errorf("token could not be retrieved from target url: %w", err)
+		}
+
+		r.Header.Set(
+			"Authorization",
+			fmt.Sprintf("Bearer %s", token.AccessToken),
+		)
 
 		return nil
 	})
