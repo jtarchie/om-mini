@@ -21,6 +21,10 @@ func (Curl) Run(cli *CLI) error {
 		request.SetHeaders(cli.Curl.Header)
 	}
 
+	if cli.Curl.Data != "" {
+		request.BodyString(cli.Curl.Data)
+	}
+
 	response, err := request.Send()
 	if err != nil {
 		return err
