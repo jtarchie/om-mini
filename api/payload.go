@@ -1,8 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
-	"gopkg.in/h2non/gentleman.v2"
+	"github.com/go-resty/resty/v2"
 	"net/http"
 	"os"
 )
@@ -17,7 +18,7 @@ type Payloads map[string]Payload
 type configs map[string]interface{}
 
 func (p Payloads) Update(
-	client *gentleman.Client,
+	client *resty.Client,
 	configs configs,
 ) error {
 	for setting, payload := range p {
@@ -30,31 +31,31 @@ func (p Payloads) Update(
 			continue
 		}
 
-		fmt.Printf("updating %s\n", setting)
+		_, _ = fmt.Fprintf(os.Stderr, "updating %s\n", setting)
 
-		request := client.Request()
-		request.
-			Method(http.MethodPut).
-			Path(payload.Endpoint)
+		request := client.R()
 
 		if payload.Root == "" {
-			request.JSON(config)
+			request.SetBody(config)
 		} else {
-			request.JSON(map[string]interface{}{
+			request.SetBody(map[string]interface{}{
 				payload.Root: config,
 			})
 		}
 
-		response, err := request.Send()
+		response, err := request.Execute(
+			http.MethodPut,
+			payload.Endpoint,
+		)
 		if err != nil {
 			return err
 		}
 
-		if !response.Ok {
+		if !response.IsSuccess() {
 			return fmt.Errorf(
 				"could not update %q, the Ops Manager API returned an error:\n%s",
 				setting,
-				response.Bytes(),
+				response.String(),
 			)
 		}
 	}
@@ -62,7 +63,7 @@ func (p Payloads) Update(
 	return nil
 }
 
-func (p Payloads) Collect(client *gentleman.Client) (configs, error) {
+func (p Payloads) Collect(client *resty.Client) (configs, error) {
 	configs := configs{}
 
 	for setting, payload := range p {
@@ -77,27 +78,27 @@ func (p Payloads) Collect(client *gentleman.Client) (configs, error) {
 
 		_, _ = fmt.Fprintf(os.Stderr, "collecting %q\n", setting)
 
-		request := client.Request()
-		request.
-			Method(http.MethodGet).
-			Path(payload.Endpoint)
+		request := client.R()
 
-		response, err := request.Send()
+		response, err := request.Execute(
+			http.MethodGet,
+			payload.Endpoint,
+		)
 		if err != nil {
 			return configs, err
 		}
 
-		if !response.Ok {
+		if !response.IsSuccess() {
 			return configs, fmt.Errorf(
 				"could not gather %q, the Ops Manager API returned an error:\n%s",
 				setting,
-				response.Bytes(),
+				response.String(),
 			)
 		}
 
 		config := map[string]interface{}{}
 
-		err = response.JSON(&config)
+		err = json.Unmarshal(response.Body(), &config)
 		if err != nil {
 			return configs, fmt.Errorf(
 				"could unmarshal %q from Ops Manager API: %w",

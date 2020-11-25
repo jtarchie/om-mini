@@ -4,14 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/cloudfoundry-community/go-uaa"
-	logger "github.com/izumin5210/gentleman-logger"
+	"github.com/go-resty/resty/v2"
 	"golang.org/x/oauth2"
-	"gopkg.in/h2non/gentleman.v2"
-	"gopkg.in/h2non/gentleman.v2/context"
-	"gopkg.in/h2non/gentleman.v2/plugins/redirect"
-	gtls "gopkg.in/h2non/gentleman.v2/plugins/tls"
 	"net/url"
-	"os"
 )
 
 type Credentials struct {
@@ -31,30 +26,28 @@ type CLI struct {
 	StagedOpsManager    StagedOpsManager    `cmd`
 }
 
-func (c *CLI) newClient() *gentleman.Client {
-	client := gentleman.New()
+func (c *CLI) newClient() *resty.Client {
+	client := resty.New()
 
 	if c.Target.Scheme == "" {
 		c.Target.Scheme = "https"
 	}
 
-	client.BaseURL(c.Target.String())
+	client.SetHostURL(c.Target.String())
 
 	var token *oauth2.Token
 
-	client.Use(redirect.Config(redirect.Options{
-		Limit:   10,
-		Trusted: true,
-	}))
+	client.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
+	client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: c.SkipSSLValidation})
+	client.SetDebug(c.Verbose)
 
-	client.UseRequest(func(ctx *context.Context, h context.Handler) {
+	client.OnBeforeRequest(func(_ *resty.Client, r *resty.Request) error {
 		if token != nil && token.Valid() {
-			ctx.Request.Header.Set(
+			r.Header.Set(
 				"Authorization",
 				fmt.Sprintf("Bearer %s", token.AccessToken),
 			)
-			h.Next(ctx)
-			return
+			return nil
 		}
 
 		if c.Username != "" && c.Password != "" {
@@ -65,26 +58,19 @@ func (c *CLI) newClient() *gentleman.Client {
 				uaa.WithVerbosity(c.Verbose),
 			)
 			if err != nil {
-				h.Error(ctx, err)
-				return
+				return err
 			}
 
-			token, err = api.Token(ctx)
+			token, err = api.Token(r.Context())
 			if err != nil {
-				h.Error(ctx, err)
-				return
+				return err
 			}
 
-			ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.AccessToken))
+			r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token.AccessToken))
 		}
-		h.Next(ctx)
+
+		return nil
 	})
-
-	client.Use(gtls.Config(&tls.Config{InsecureSkipVerify: c.SkipSSLValidation}))
-
-	if c.Verbose {
-		client.Use(logger.New(os.Stderr))
-	}
 
 	return client
 }
