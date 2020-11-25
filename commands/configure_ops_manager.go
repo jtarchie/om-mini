@@ -24,5 +24,5 @@ func (ConfigureOpsManager) Run(cli *CLI) error {
 		return err
 	}
 
-	return payloads.Update(client, configs)
+	return opsmanagerPayloads.Update(client, configs)
 }

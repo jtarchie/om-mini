@@ -8,7 +8,7 @@ import (
 
 type StagedOpsManager struct{}
 
-var payloads = api.Payloads{
+var opsmanagerPayloads = api.Payloads{
 	"syslog-settings": api.Payload{
 		Endpoint:      "/api/v0/settings/syslog",
 		Root:          "syslog",
@@ -41,7 +41,7 @@ var payloads = api.Payloads{
 func (StagedOpsManager) Run(cli *CLI) error {
 	client := cli.newClient()
 
-	configs, err := payloads.Collect(client)
+	configs, err := opsmanagerPayloads.Collect(client)
 	if err != nil {
 		return err
 	}
