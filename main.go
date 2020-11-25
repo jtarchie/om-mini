@@ -8,11 +8,13 @@ import (
 func main() {
 	cli := commands.CLI{}
 	ctx := kong.Parse(&cli,
-		kong.Name("om"),
-		kong.Description("om helps you interact with an Ops Manager"),
+		kong.Name("om-mini"),
+		kong.Description("om-mini helps you interact with an Ops Manager"),
 		kong.UsageOnError(),
+		kong.ConfigureHelp(kong.HelpOptions{
+			Compact: true,
+		}),
 	)
-	ctx.Bind()
 	err := ctx.Run(&cli)
 	ctx.FatalIfErrorf(err)
 }
