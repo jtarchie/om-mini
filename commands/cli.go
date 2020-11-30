@@ -26,6 +26,7 @@ type CLI struct {
 	Curl                Curl                `cmd`
 	ConfigureOpsManager ConfigureOpsManager `cmd`
 	StagedOpsManager    StagedOpsManager    `cmd`
+	StagedDirector      StagedDirector      `cmd`
 }
 
 func (c *CLI) newClient() *resty.Client {
@@ -72,6 +73,8 @@ func (c *CLI) newClient() *resty.Client {
 				c.ClientSecret,
 				uaa.OpaqueToken,
 			)
+		} else {
+			return fmt.Errorf("authentication required to perform operation, ensure username/password or clientID/clientSecret")
 		}
 
 		api, err := uaa.New(

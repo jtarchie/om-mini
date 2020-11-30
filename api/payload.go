@@ -90,7 +90,7 @@ func (p Payloads) Collect(client *resty.Client) (configs, error) {
 
 		if !response.IsSuccess() {
 			return configs, fmt.Errorf(
-				"could not gather %q, the Ops Manager API returned an error:\n%s",
+				"could not collect %q, the Ops Manager API returned an error:\n%s",
 				setting,
 				response.String(),
 			)
