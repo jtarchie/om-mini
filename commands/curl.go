@@ -27,7 +27,7 @@ func (Curl) Run(cli *CLI) error {
 		cli.Curl.Path,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not execute request: %w", err)
 	}
 
 	if response.IsSuccess() {

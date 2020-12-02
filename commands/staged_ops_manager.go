@@ -2,12 +2,14 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/jtarchie/om-mini/api"
 	"gopkg.in/yaml.v3"
 )
 
 type StagedOpsManager struct{}
 
+//nolint:gochecknoglobals
 var opsmanagerPayloads = api.Payloads{
 	"syslog-settings": api.Payload{
 		Endpoint:      "/api/v0/settings/syslog",
@@ -43,12 +45,12 @@ func (StagedOpsManager) Run(cli *CLI) error {
 
 	configs, err := opsmanagerPayloads.Collect(client)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not collect opsmanager config: %w", err)
 	}
 
 	contents, err := yaml.Marshal(configs)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not marshal config file: %w", err)
 	}
 
 	fmt.Printf("%s", contents)

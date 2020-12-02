@@ -1,8 +1,10 @@
 package commands
 
 import (
-	"gopkg.in/yaml.v3"
+	"fmt"
 	"io/ioutil"
+
+	"gopkg.in/yaml.v3"
 )
 
 type ConfigureOpsManager struct {
@@ -14,14 +16,14 @@ func (ConfigureOpsManager) Run(cli *CLI) error {
 
 	contents, err := ioutil.ReadFile(cli.ConfigureOpsManager.Config)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not read config file: %w", err)
 	}
 
 	var configs map[string]interface{}
 
 	err = yaml.Unmarshal(contents, &configs)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not unmarshal config file: %w", err)
 	}
 
 	return opsmanagerPayloads.Update(client, configs)

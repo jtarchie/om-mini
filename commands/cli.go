@@ -3,10 +3,11 @@ package commands
 import (
 	"crypto/tls"
 	"fmt"
+	"net/url"
+
 	"github.com/cloudfoundry-community/go-uaa"
 	"github.com/go-resty/resty/v2"
 	"golang.org/x/oauth2"
-	"net/url"
 )
 
 type Credentials struct {
@@ -21,35 +22,34 @@ type Credentials struct {
 }
 
 type CLI struct {
-	Credentials
-
 	Curl                Curl                `cmd:""`
 	ConfigureOpsManager ConfigureOpsManager `cmd:""`
 	StagedOpsManager    StagedOpsManager    `cmd:""`
 	StagedDirector      StagedDirector      `cmd:""`
+
+	Credentials
 }
 
 func (c *CLI) newClient() *resty.Client {
 	client := resty.New()
 
-	if c.Target.Scheme == "" {
-		c.Target.Scheme = "https"
-	}
+	setupTarget(c, client)
+	setupClient(c, client)
+	setupAuth(c, client)
 
-	client.SetHostURL(c.Target.String())
+	return client
+}
 
+func setupAuth(c *CLI, client *resty.Client) *resty.Client {
 	var token *oauth2.Token
 
-	client.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
-	client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: c.SkipSSLValidation})
-	client.SetDebug(c.Verbose)
-
-	client.OnBeforeRequest(func(_ *resty.Client, r *resty.Request) error {
+	return client.OnBeforeRequest(func(_ *resty.Client, r *resty.Request) error {
 		if token != nil && token.Valid() {
 			r.Header.Set(
 				"Authorization",
 				fmt.Sprintf("Bearer %s", token.AccessToken),
 			)
+
 			return nil
 		}
 
@@ -59,7 +59,8 @@ func (c *CLI) newClient() *resty.Client {
 
 		var authOption uaa.AuthenticationOption
 
-		if c.Username != "" && c.Password != "" {
+		switch {
+		case c.Username != "" && c.Password != "":
 			authOption = uaa.WithPasswordCredentials(
 				"opsman",
 				"",
@@ -67,13 +68,13 @@ func (c *CLI) newClient() *resty.Client {
 				c.Password,
 				uaa.OpaqueToken,
 			)
-		} else if c.ClientID != "" && c.ClientSecret != "" {
+		case c.ClientID != "" && c.ClientSecret != "":
 			authOption = uaa.WithClientCredentials(
 				c.ClientID,
 				c.ClientSecret,
 				uaa.OpaqueToken,
 			)
-		} else {
+		default:
 			return fmt.Errorf("authentication required to perform operation, ensure username/password or clientID/clientSecret")
 		}
 
@@ -98,6 +99,23 @@ func (c *CLI) newClient() *resty.Client {
 
 		return nil
 	})
+}
 
-	return client
+func setupClient(c *CLI, client *resty.Client) {
+	numberOfRedirects := 10
+	client.SetRedirectPolicy(resty.FlexibleRedirectPolicy(numberOfRedirects))
+
+	//nolint:gosec
+	client.SetTLSClientConfig(&tls.Config{
+		InsecureSkipVerify: c.SkipSSLValidation,
+	})
+	client.SetDebug(c.Verbose)
+}
+
+func setupTarget(c *CLI, client *resty.Client) {
+	if c.Target.Scheme == "" {
+		c.Target.Scheme = "https"
+	}
+
+	client.SetHostURL(c.Target.String())
 }

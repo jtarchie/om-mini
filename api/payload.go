@@ -3,9 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"net/http"
 	"os"
+
+	"github.com/go-resty/resty/v2"
 )
 
 type Payload struct {
@@ -14,12 +15,14 @@ type Payload struct {
 	IsCollectable bool
 }
 
-type Payloads map[string]Payload
-type configs map[string]interface{}
+type (
+	Payloads map[string]Payload
+	Configs  map[string]interface{}
+)
 
 func (p Payloads) Update(
 	client *resty.Client,
-	configs configs,
+	configs Configs,
 ) error {
 	for setting, payload := range p {
 		if payload.Endpoint == "" {
@@ -48,7 +51,7 @@ func (p Payloads) Update(
 			payload.Endpoint,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("could not execute request: %w", err)
 		}
 
 		if !response.IsSuccess() {
@@ -63,12 +66,13 @@ func (p Payloads) Update(
 	return nil
 }
 
-func (p Payloads) Collect(client *resty.Client) (configs, error) {
-	configs := configs{}
+func (p Payloads) Collect(client *resty.Client) (Configs, error) {
+	configs := Configs{}
 
 	for setting, payload := range p {
 		if !payload.IsCollectable {
 			_, _ = fmt.Fprintf(os.Stderr, "unable to collect %q, skipping\n", setting)
+
 			continue
 		}
 
@@ -85,7 +89,7 @@ func (p Payloads) Collect(client *resty.Client) (configs, error) {
 			payload.Endpoint,
 		)
 		if err != nil {
-			return configs, err
+			return configs, fmt.Errorf("could not execute request: %w", err)
 		}
 
 		if !response.IsSuccess() {
@@ -112,7 +116,6 @@ func (p Payloads) Collect(client *resty.Client) (configs, error) {
 		} else {
 			configs[setting] = config[payload.Root]
 		}
-
 	}
 
 	return configs, nil
