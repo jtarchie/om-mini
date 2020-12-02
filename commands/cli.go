@@ -14,7 +14,7 @@ type Credentials struct {
 	Password             string   `env:"OM_PASSWORD" short:"p" help:"admin password for the Ops Manager VM (not required for unauthenticated commands)"`
 	ClientID             string   `env:"OM_CLIENT_ID" help:"admin client ID for the Ops Manager VM (not required for unauthenticated commands)"`
 	ClientSecret         string   `env:"OM_CLIENT_SECRET" help:"admin client secret for the Ops Manager VM (not required for unauthenticated commands)"`
-	Target               *url.URL `env:"OM_TARGET"   short:"t" required help:"location of the Ops Manager VM"`
+	Target               *url.URL `env:"OM_TARGET"   short:"t" required:"" help:"location of the Ops Manager VM"`
 	DecryptionPassphrase string   `env:"OM_DECRYPTION_PASSPHRASE" short:"d" help:"Passphrase to decrypt the installation if the Ops Manager VM has been rebooted (optional for most commands)"`
 	SkipSSLValidation    bool     `env:"OM_SKIP_SSL_VALIDATION" short:"k" help:"skip ssl certificate validation during http requests"`
 	Verbose              bool     `short:"v" help:"write all requests and responses to stderr"`
@@ -23,10 +23,10 @@ type Credentials struct {
 type CLI struct {
 	Credentials
 
-	Curl                Curl                `cmd`
-	ConfigureOpsManager ConfigureOpsManager `cmd`
-	StagedOpsManager    StagedOpsManager    `cmd`
-	StagedDirector      StagedDirector      `cmd`
+	Curl                Curl                `cmd:""`
+	ConfigureOpsManager ConfigureOpsManager `cmd:""`
+	StagedOpsManager    StagedOpsManager    `cmd:""`
+	StagedDirector      StagedDirector      `cmd:""`
 }
 
 func (c *CLI) newClient() *resty.Client {

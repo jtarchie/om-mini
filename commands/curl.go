@@ -5,7 +5,7 @@ import "fmt"
 type Curl struct {
 	Data   string            `short:"d" help:"api request payload"`
 	Header map[string]string `short:"H" help:"used to specify custom headers with your command"`
-	Path   string            `short:"p" help:"path to api endpoint" required`
+	Path   string            `short:"p" help:"path to api endpoint" required:""`
 	Method string            `short:"X" help:"http verb" default:"GET"`
 }
 

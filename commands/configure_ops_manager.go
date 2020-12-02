@@ -6,7 +6,7 @@ import (
 )
 
 type ConfigureOpsManager struct {
-	Config string `short:"c" help:"config file for the OpsManager" required`
+	Config string `short:"c" help:"config file for the OpsManager" required:""`
 }
 
 func (ConfigureOpsManager) Run(cli *CLI) error {
